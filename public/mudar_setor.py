@@ -22,7 +22,7 @@ def finalizar_OS_mudar_setor():
         with open(arquivo_entrada, 'r', encoding='utf-8') as f:
             dados_os = json.load(f)
 
-        url = f"https://{hostIXC}/webservice/v1/su_oss_chamado_fechar"
+        url = f"https://{hostIXC}/webservice/v1/su_oss_chamado_alterar_setor"
         token = tokenIXC
         
         headers = {
@@ -31,8 +31,8 @@ def finalizar_OS_mudar_setor():
         }
 
         if 'registros' not in dados_os or not dados_os['registros']:
-            logging.info("Nenhum registro encontrado para finalização")
-            print("Nenhum registro encontrado para finalização")
+            logging.info("Nenhum registro encontrado para encaminnhamento")
+            print("Nenhum registro encontrado para encaminnhamento")
             return
 
         for registro in dados_os['registros']:
@@ -43,12 +43,9 @@ def finalizar_OS_mudar_setor():
 
             payload = {
                 "id_chamado": str(id_os),
-                "data_inicio": "20/03/2025",
-                "data_final": "01/04/2025",
+                "id_setor": "19",
                 "mensagem": "OS mudando de Setor",
-                "id_tecnico": "96",
-                "setor": "19",
-                "status": "A"
+                "status": "EN"
             }
 
             try:
@@ -57,11 +54,11 @@ def finalizar_OS_mudar_setor():
                                        headers=headers)
                 
                 if response.status_code == 200:
-                    logging.info(f"OS {id_os} finalizada com sucesso")
-                    print(f"OS {id_os} finalizada com sucesso")
+                    logging.info(f"OS {id_os} encaminhada com sucesso")
+                    print(f"OS {id_os} encaminhada com sucesso")
                 else:
-                    logging.error(f"Erro ao finalizar OS {id_os}: Status {response.status_code}")
-                    print(f"Erro ao finalizar OS {id_os}: Status {response.status_code}")
+                    logging.error(f"Erro ao encaminhar OS {id_os}: Status {response.status_code}")
+                    print(f"Erro ao encaminhar OS {id_os}: Status {response.status_code}")
                     print(f"Resposta: {response.text}")
                     
             except requests.exceptions.RequestException as e:
@@ -72,8 +69,5 @@ def finalizar_OS_mudar_setor():
         logging.error(f"Erro geral no script: {str(e)}")
         print(f"Erro geral no script: {str(e)}")
 
-    logging.info("Processo de finalização concluído")
-    print("Processo de finalização concluído")
-
-if __name__ == "__main__":
-    finalizar_OS()
+    logging.info("Processo de encaminnhamento concluído")
+    print("Processo de encaminnhamento concluído")

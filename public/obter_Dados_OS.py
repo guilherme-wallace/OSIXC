@@ -14,7 +14,7 @@ def obter_dados_OS(arquivo_saida_pega_OS_json):
         'query': '0',
         'oper': '>',
         'page': '1',
-        'rp': '1',
+        'rp': '10000',
         'grid_param': json.dumps([
             {
                 "TB": "status",
@@ -29,7 +29,7 @@ def obter_dados_OS(arquivo_saida_pega_OS_json):
             {
                 "TB": "setor",
                 "OP": "=",
-                "P": "9"
+                "P": "17"
             }
         ]),
         'sortname': 'su_oss_chamado.id',
