@@ -21,7 +21,7 @@ def main():
         obter_dados_OS(arquivo_saida_pega_OS)
         logging.info(f"Dados do Atendimento obtidos e salvos em {arquivo_saida_pega_OS}.")
 
-        finalizar_OS_mudar_setor()
+        #finalizar_OS_mudar_setor()
         #finalizar_OS()
         #finalizar_OS_Mensagem()
         logging.info(f"Script finalizado.")
