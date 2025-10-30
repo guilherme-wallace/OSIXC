@@ -6,6 +6,7 @@ from public.obter_Dados_OS import obter_dados_OS
 from public.finalizar_OS_Mensagem import finalizar_OS_Mensagem
 from public.finalizar_OS import finalizar_OS
 from public.mudar_setor import finalizar_OS_mudar_setor
+from public.registrar_OS_Mensagem import registrar_OS_Mensagem
 
 caminho = ''
 
@@ -24,6 +25,7 @@ def main():
         #finalizar_OS_mudar_setor()
         #finalizar_OS()
         #finalizar_OS_Mensagem()
+        #registrar_OS_Mensagem()
         logging.info(f"Script finalizado.")
 
     except Exception as e:
