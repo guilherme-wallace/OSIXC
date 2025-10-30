@@ -22,9 +22,9 @@ def obter_dados_OS(arquivo_saida_pega_OS_json):
                 "P": "F"
             },
             {
-                "TB": "data_abertura",
-                "OP": ">",
-                "P": "2025-02-01 00:00:00"
+                "TB": "setor",
+                "OP": "=",
+                "P": "18"
             }
         ]),
         'sortname': 'su_oss_chamado.id',

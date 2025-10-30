@@ -43,9 +43,9 @@ def finalizar_OS():
 
             payload = {
                 "id_chamado": str(id_os),
-                "data_inicio": "20/03/2025",
-                "data_final": "02/04/2025",
-                "mensagem": "Finalização de OS",
+                "data_inicio": "29/10/2025",
+                "data_final": "30/10/2025",
+                "mensagem": "Cobrança sendo realizada pela empresa 2SAFE",
                 "id_tecnico": "96",
                 "finaliza_processo_aux": "S",
                 "status": "F"
