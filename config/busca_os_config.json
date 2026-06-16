@@ -1,0 +1,14 @@
+{
+    "setores_permitidos": [
+        "9",
+        "5"
+    ],
+    "status_finalizado": "F",
+    "data_abertura_limite": "2026-05-01 00:00:00",
+    "tecnico_responsavel": "96",
+    "limite_por_lote": 100,
+    "dry_run": true,
+    "arquivo_json_busca": "src/pegaOSResultado.json",
+    "relatorio_csv": "src/relatorio_os_encontradas.csv",
+    "validade_json_minutos": 60
+}
