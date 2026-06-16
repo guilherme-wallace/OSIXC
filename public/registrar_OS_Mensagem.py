@@ -1,11 +1,15 @@
-import requests
 import base64
 import json
 import os
 import logging
 from route.dadosDeconexao import hostIXC, tokenIXC
+from public.travas_seguranca import bloquear_acao_destrutiva
 
 def registrar_OS_Mensagem():
+    bloquear_acao_destrutiva("registrar_OS_Mensagem")
+
+    import requests
+
     caminho = ''
     logging.basicConfig(filename=f'{caminho}src/finalizar_OS_Mensagem.log',
                        level=logging.INFO,
@@ -71,4 +75,4 @@ def registrar_OS_Mensagem():
     print("Processo de registrar mensagem concluído")
 
 if __name__ == "__main__":
-    finalizar_OS_Mensagem()
+    registrar_OS_Mensagem()

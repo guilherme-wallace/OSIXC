@@ -2,3 +2,5 @@
 /src
 /route
 /public/__pycache__
+.env
+*.log
