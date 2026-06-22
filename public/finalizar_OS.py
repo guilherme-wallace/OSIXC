@@ -1,11 +1,15 @@
-import requests
 import base64
 import json
 import os
 import logging
 from route.dadosDeconexao import hostIXC, tokenIXC
+from public.travas_seguranca import bloquear_acao_destrutiva
 
 def finalizar_OS():
+    bloquear_acao_destrutiva("finalizar_OS")
+
+    import requests
+
     caminho = ''
     logging.basicConfig(filename=f'{caminho}src/finalizar_OS.log',
                        level=logging.INFO,
