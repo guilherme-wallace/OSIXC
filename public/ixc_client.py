@@ -3,6 +3,7 @@ import json
 import urllib.error
 import urllib.request
 
+from public.travas_seguranca import validar_e_consumir_autorizacao
 from route.dadosDeconexao import hostIXC, hostIntranet, tokenIXC, urlIXC
 
 
@@ -48,10 +49,20 @@ def obter_os_por_id(id_os, timeout_segundos):
             f"OS {id_os} nao foi encontrada durante a revalidacao.",
             categoria="os_nao_encontrada",
         )
-    return registros[0]
+    registro = registros[0]
+    id_retornado = str(registro.get("id", "")).strip()
+    if id_retornado != str(id_os):
+        raise IXCAPIError(
+            f"IXC retornou OS {id_retornado or 'sem_id'} ao revalidar OS {id_os}.",
+            categoria="id_revalidacao_divergente",
+            critico=True,
+        )
+    return registro
 
 
-def fechar_os(id_os, configuracao):
+def fechar_os(id_os, configuracao, autorizacao=None):
+    validar_e_consumir_autorizacao(autorizacao, id_os)
+
     url = f"https://{hostIXC}/webservice/v1/su_oss_chamado_fechar"
     payload = {
         "id_chamado": str(id_os),

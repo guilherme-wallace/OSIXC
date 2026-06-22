@@ -3,10 +3,7 @@ from datetime import datetime
 
 from public.ixc_client import IXCAPIError, fechar_os, obter_os_por_id
 from public.relatorio_os import gerar_relatorios_fechamento, validar_filtros_os
-from public.travas_seguranca import (
-    solicitar_confirmacao_fechamento,
-    validar_pre_condicoes_fechamento,
-)
+from public.travas_seguranca import autorizar_fechamento
 
 
 def finalizar_OS(
@@ -18,8 +15,6 @@ def finalizar_OS(
 ):
     obter_os_fn = obter_os_fn or obter_os_por_id
     fechar_os_fn = fechar_os_fn or fechar_os
-
-    validar_pre_condicoes_fechamento(configuracao, resultado_busca)
 
     registros = resultado_busca.get("registros", [])
     candidatos = []
@@ -50,7 +45,12 @@ def finalizar_OS(
         gerar_relatorios_fechamento([], erros, configuracao)
         return _resumo([], erros, interrompido=False)
 
-    solicitar_confirmacao_fechamento(len(candidatos), input_fn=input_fn)
+    autorizacao = autorizar_fechamento(
+        configuracao,
+        resultado_busca,
+        [registro["id"] for registro in candidatos],
+        input_fn=input_fn,
+    )
 
     sucessos = []
     contagem_erros = Counter()
@@ -71,7 +71,7 @@ def finalizar_OS(
                     categoria="revalidacao_filtros",
                 )
 
-            resposta = fechar_os_fn(id_os, configuracao_execucao)
+            resposta = fechar_os_fn(id_os, configuracao_execucao, autorizacao)
             sucessos.append(
                 {
                     "id_execucao": resultado_busca["id_execucao"],

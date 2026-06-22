@@ -76,6 +76,8 @@ class FechamentoSeguroTests(unittest.TestCase):
         self.assertEqual(resumo["total_sucessos"], 1)
         self.assertEqual(resumo["total_erros"], 1)
         fechar.assert_called_once()
+        self.assertEqual(fechar.call_args.args[0], "1")
+        self.assertIsNotNone(fechar.call_args.args[2])
         self.assertEqual(self._contar_linhas("sucessos.csv"), 1)
         self.assertEqual(self._contar_linhas("erros.csv"), 1)
 

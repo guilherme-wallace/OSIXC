@@ -85,7 +85,8 @@ Depois da execucao, retorne `dry_run` para `true` e revise os dois CSVs de resul
 - Erro comum: registra no CSV e continua.
 - Erro critico, como autenticacao: pergunta se deve continuar, ignorar o tipo ou parar.
 - Erro repetido: ao atingir `limite_erros_repetidos`, faz a mesma pergunta.
-- Entrada encerrada ou invalida durante situacao critica: a opcao segura e parar.
+- Entrada invalida durante situacao critica pede uma nova opcao; encerramento da
+  entrada (EOF) usa a opcao segura de parar.
 
 ## Testes automatizados
 
