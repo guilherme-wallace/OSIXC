@@ -9,12 +9,18 @@ _SEGREDO_CAPABILITY = object()
 
 
 class _AutorizacaoFechamento:
-    __slots__ = ("_segredo", "id_execucao", "ids_pendentes")
+    __slots__ = (
+        "_segredo",
+        "id_execucao",
+        "ids_pendentes",
+        "cascata_permitida",
+    )
 
-    def __init__(self, id_execucao, ids_autorizados):
+    def __init__(self, id_execucao, ids_autorizados, cascata_permitida=False):
         self._segredo = _SEGREDO_CAPABILITY
         self.id_execucao = id_execucao
         self.ids_pendentes = set(ids_autorizados)
+        self.cascata_permitida = cascata_permitida
 
 
 def validar_artefatos_e_lote(configuracao, resultado_busca):
@@ -66,6 +72,7 @@ def autorizar_fechamento(configuracao, resultado_busca, ids_autorizados, input_f
     return _AutorizacaoFechamento(
         resultado_busca["id_execucao"],
         ids_normalizados,
+        cascata_permitida=configuracao.get("fechamento_cascata_ativo", False),
     )
 
 
@@ -98,6 +105,17 @@ def validar_e_consumir_autorizacao(autorizacao, id_os):
         )
 
     autorizacao.ids_pendentes.remove(id_normalizado)
+
+
+def autorizar_ids_cascata(autorizacao, ids_os):
+    if (
+        not isinstance(autorizacao, _AutorizacaoFechamento)
+        or autorizacao._segredo is not _SEGREDO_CAPABILITY
+        or not autorizacao.cascata_permitida
+    ):
+        raise RuntimeError("Capability nao autoriza fechamento em cascata.")
+
+    autorizacao.ids_pendentes.update(str(id_os) for id_os in ids_os)
 
 
 def frase_confirmacao(quantidade):

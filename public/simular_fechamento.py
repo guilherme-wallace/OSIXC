@@ -1,6 +1,7 @@
 from datetime import datetime
 from time import perf_counter
 
+from public.fechamento_cascata import executar_cascata_simulada
 from public.ixc_client import IXCAPIError, obter_os_por_id
 from public.relatorio_os import gerar_relatorios_simulacao, validar_filtros_os
 from public.travas_seguranca import confirmar_simulacao
@@ -87,6 +88,13 @@ def simular_fechamento(
     duracao = max(0.0, relogio_fn() - inicio)
     ignorados = len(registros) - len(candidatos)
 
+    cascata = None
+    if configuracao.get("fechamento_cascata_ativo", False):
+        cascata = executar_cascata_simulada(
+            configuracao,
+            input_fn=input_fn,
+        )
+
     return {
         "total_encontrado": len(registros),
         "total_dentro_lote": len(candidatos),
@@ -96,6 +104,7 @@ def simular_fechamento(
         "tempo_aproximado_segundos": round(duracao, 2),
         "relatorio_sucessos": configuracao["relatorio_simulacao_sucessos_csv"],
         "relatorio_erros": configuracao["relatorio_simulacao_erros_csv"],
+        "cascata": cascata,
     }
 
 

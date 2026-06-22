@@ -60,6 +60,34 @@ def obter_os_por_id(id_os, timeout_segundos):
     return registro
 
 
+def listar_os_cascata(configuracao):
+    payload = {
+        "qtype": "su_oss_chamado.id",
+        "query": "0",
+        "oper": ">",
+        "page": "1",
+        "rp": str(configuracao["limite_por_rodada_cascata"]),
+        "grid_param": json.dumps(
+            [
+                {
+                    "TB": "status",
+                    "OP": "!=",
+                    "P": str(configuracao["status_finalizado"]),
+                },
+                {
+                    "TB": "mensagem",
+                    "OP": "LIKE",
+                    "P": configuracao["frase_marcadora_fechamento"],
+                },
+            ]
+        ),
+        "sortname": "su_oss_chamado.id",
+        "sortorder": "asc",
+    }
+    resposta = listar_os(payload, configuracao["timeout_api_segundos"])
+    return resposta.get("registros", [])
+
+
 def fechar_os(id_os, configuracao, autorizacao=None):
     validar_e_consumir_autorizacao(autorizacao, id_os)
 

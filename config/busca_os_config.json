@@ -14,6 +14,12 @@
     "relatorio_simulacao_erros_csv": "src/relatorio_simulacao_erros.csv",
     "validade_json_minutos": 60,
     "limite_erros_repetidos": 3,
-    "mensagem_fechamento": "OS finalizada em lote pela Intervip",
-    "timeout_api_segundos": 30
+    "mensagem_fechamento": "OS finalizada em lote via script de fechamento.",
+    "timeout_api_segundos": 30,
+    "fechamento_cascata_ativo": false,
+    "frase_marcadora_fechamento": "OS finalizada em lote via script de fechamento.",
+    "max_rodadas_cascata": 5,
+    "limite_por_rodada_cascata": 100,
+    "intervalo_segundos_entre_rodadas": 5,
+    "diretorio_relatorios_cascata": "src/relatorios_cascata"
 }

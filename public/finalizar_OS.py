@@ -1,6 +1,7 @@
 from collections import Counter
 from datetime import datetime
 
+from public.fechamento_cascata import executar_cascata_real
 from public.ixc_client import IXCAPIError, fechar_os, obter_os_por_id
 from public.relatorio_os import gerar_relatorios_fechamento, validar_filtros_os
 from public.travas_seguranca import autorizar_fechamento
@@ -138,7 +139,14 @@ def finalizar_OS(
                     break
 
     gerar_relatorios_fechamento(sucessos, erros, configuracao)
-    return _resumo(sucessos, erros, interrompido)
+    cascata = None
+    if configuracao.get("fechamento_cascata_ativo", False) and not interrompido:
+        cascata = executar_cascata_real(
+            configuracao,
+            autorizacao,
+            input_fn=input_fn,
+        )
+    return _resumo(sucessos, erros, interrompido, cascata)
 
 
 def _perguntar_apos_erro(erro, repeticoes, input_fn):
@@ -184,9 +192,10 @@ def _registro_erro(
     }
 
 
-def _resumo(sucessos, erros, interrompido):
+def _resumo(sucessos, erros, interrompido, cascata=None):
     return {
         "total_sucessos": len(sucessos),
         "total_erros": len(erros),
         "interrompido": interrompido,
+        "cascata": cascata,
     }

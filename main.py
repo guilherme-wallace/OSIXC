@@ -46,6 +46,7 @@ def main():
                 "Tempo aproximado: "
                 f"{resumo['tempo_aproximado_segundos']:.2f} segundo(s)"
             )
+            _mostrar_resumo_cascata(resumo.get("cascata"))
         elif configuracao["dry_run"]:
             logging.info("Dry-run ativo. Nenhuma OS foi fechada.")
             print("Dry-run ativo. Revise o CSV antes de habilitar o fechamento real.")
@@ -62,12 +63,29 @@ def main():
                 f"{resumo['total_sucessos']} sucesso(s), "
                 f"{resumo['total_erros']} erro(s)."
             )
+            _mostrar_resumo_cascata(resumo.get("cascata"))
 
     except Exception as erro:
         logging.error("Erro durante a execucao do script: %s", erro)
         raise
 
     logging.info("Execucao do script concluida.")
+
+
+def _mostrar_resumo_cascata(cascata):
+    if not cascata or not cascata.get("ativo"):
+        return
+    print("")
+    print("Resumo da cascata:")
+    print(f"Rodadas executadas: {cascata['rodadas_executadas']}")
+    print(f"OSs encontradas: {cascata['total_encontrado']}")
+    print(
+        "OSs fechadas ou simuladas: "
+        f"{cascata['total_fechado_ou_simulado']}"
+    )
+    print(f"Erros: {cascata['total_erros']}")
+    print(f"Ignoradas: {cascata['total_ignorado']}")
+    print(f"Motivo da parada: {cascata['motivo_parada']}")
 
 
 if __name__ == "__main__":
