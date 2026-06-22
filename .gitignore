@@ -6,3 +6,4 @@
 .env
 *.log
 backup_etapa2_local.patch
+/.pytest_cache
