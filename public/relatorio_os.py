@@ -4,41 +4,29 @@ from datetime import datetime
 
 
 CAMPOS_RELATORIO = [
-    "id",
-    "status",
-    "setor",
-    "data_abertura",
-    "id_cliente",
-    "id_contrato_kit",
-    "id_assunto",
-    "id_tecnico",
-    "protocolo",
-    "mensagem",
-    "inconsistencias",
+    "id", "status", "setor", "data_abertura", "id_cliente",
+    "id_contrato_kit", "id_assunto", "id_tecnico", "protocolo",
+    "mensagem", "inconsistencias",
 ]
 
 CAMPOS_FECHAMENTO_SUCESSO = [
-    "id_execucao",
-    "id",
-    "data_hora",
-    "setor_revalidado",
-    "status_anterior",
-    "data_abertura",
-    "id_tecnico_responsavel",
-    "mensagem_fechamento",
-    "resposta_ixc",
+    "id_execucao", "id", "data_hora", "setor_revalidado",
+    "status_anterior", "data_abertura", "id_tecnico_responsavel",
+    "mensagem_fechamento", "resposta_ixc",
 ]
 
 CAMPOS_FECHAMENTO_ERRO = [
-    "id_execucao",
-    "id",
-    "data_hora",
-    "etapa",
-    "categoria",
-    "codigo_http",
-    "critico",
-    "tentativa_repetida",
-    "mensagem",
+    "id_execucao", "id", "data_hora", "etapa", "categoria",
+    "codigo_http", "critico", "tentativa_repetida", "mensagem",
+]
+
+CAMPOS_SIMULACAO_SUCESSO = [
+    "id_execucao", "id", "data_hora", "setor_revalidado",
+    "status_atual", "data_abertura", "resultado",
+]
+
+CAMPOS_SIMULACAO_ERRO = [
+    "id_execucao", "id", "data_hora", "etapa", "categoria", "mensagem",
 ]
 
 
@@ -57,15 +45,20 @@ def gerar_relatorio_csv(registros, caminho_csv):
 
 
 def gerar_relatorios_fechamento(sucessos, erros, configuracao):
+    _gerar_csv(sucessos, configuracao["relatorio_sucessos_csv"], CAMPOS_FECHAMENTO_SUCESSO)
+    _gerar_csv(erros, configuracao["relatorio_erros_csv"], CAMPOS_FECHAMENTO_ERRO)
+
+
+def gerar_relatorios_simulacao(sucessos, erros, configuracao):
     _gerar_csv(
         sucessos,
-        configuracao["relatorio_sucessos_csv"],
-        CAMPOS_FECHAMENTO_SUCESSO,
+        configuracao["relatorio_simulacao_sucessos_csv"],
+        CAMPOS_SIMULACAO_SUCESSO,
     )
     _gerar_csv(
         erros,
-        configuracao["relatorio_erros_csv"],
-        CAMPOS_FECHAMENTO_ERRO,
+        configuracao["relatorio_simulacao_erros_csv"],
+        CAMPOS_SIMULACAO_ERRO,
     )
 
 
@@ -115,10 +108,8 @@ def validar_filtros_os(registro, configuracao):
 
     if not id_os:
         problemas.append("sem_id")
-
     if status == status_finalizado:
         problemas.append("status_finalizado")
-
     if setor not in setores_permitidos:
         problemas.append("setor_fora_da_configuracao")
 
@@ -137,16 +128,12 @@ def _parse_data_config(valor):
 
 def _parse_data_ixc(valor):
     formatos = [
-        "%Y-%m-%d %H:%M:%S",
-        "%d/%m/%Y %H:%M:%S",
-        "%Y-%m-%d",
-        "%d/%m/%Y",
+        "%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S",
+        "%Y-%m-%d", "%d/%m/%Y",
     ]
-
     for formato in formatos:
         try:
             return datetime.strptime(valor, formato)
         except ValueError:
             continue
-
     return None

@@ -14,6 +14,16 @@ def carregar_configuracao(caminho_config=CONFIG_PADRAO):
     with open(caminho_config, "r", encoding="utf-8") as arquivo:
         configuracao = json.load(arquivo)
 
+    configuracao.setdefault("simulacao_fechamento", False)
+    configuracao.setdefault(
+        "relatorio_simulacao_sucessos_csv",
+        "src/relatorio_simulacao_sucessos.csv",
+    )
+    configuracao.setdefault(
+        "relatorio_simulacao_erros_csv",
+        "src/relatorio_simulacao_erros.csv",
+    )
+
     validar_configuracao(configuracao)
     return configuracao
 
@@ -26,10 +36,13 @@ def validar_configuracao(configuracao):
         "tecnico_responsavel",
         "limite_por_lote",
         "dry_run",
+        "simulacao_fechamento",
         "arquivo_json_busca",
         "relatorio_csv",
         "relatorio_sucessos_csv",
         "relatorio_erros_csv",
+        "relatorio_simulacao_sucessos_csv",
+        "relatorio_simulacao_erros_csv",
         "validade_json_minutos",
         "limite_erros_repetidos",
         "mensagem_fechamento",
@@ -42,6 +55,12 @@ def validar_configuracao(configuracao):
 
     if not isinstance(configuracao["dry_run"], bool):
         raise ValueError("dry_run deve ser true ou false.")
+
+    if not isinstance(configuracao["simulacao_fechamento"], bool):
+        raise ValueError("simulacao_fechamento deve ser true ou false.")
+
+    if configuracao["simulacao_fechamento"] and not configuracao["dry_run"]:
+        raise ValueError("A simulacao exige dry_run=true.")
 
     if not configuracao["setores_permitidos"]:
         raise ValueError("Informe ao menos um setor permitido.")

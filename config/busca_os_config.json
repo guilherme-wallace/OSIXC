@@ -1,17 +1,17 @@
 {
-    "setores_permitidos": [
-        "9",
-        "5"
-    ],
+    "setores_permitidos": ["9", "5"],
     "status_finalizado": "F",
     "data_abertura_limite": "2026-05-01 00:00:00",
     "tecnico_responsavel": "96",
     "limite_por_lote": 1000,
     "dry_run": true,
+    "simulacao_fechamento": false,
     "arquivo_json_busca": "src/pegaOSResultado.json",
     "relatorio_csv": "src/relatorio_os_encontradas.csv",
     "relatorio_sucessos_csv": "src/relatorio_fechamentos_sucesso.csv",
     "relatorio_erros_csv": "src/relatorio_fechamentos_erro.csv",
+    "relatorio_simulacao_sucessos_csv": "src/relatorio_simulacao_sucessos.csv",
+    "relatorio_simulacao_erros_csv": "src/relatorio_simulacao_erros.csv",
     "validade_json_minutos": 60,
     "limite_erros_repetidos": 3,
     "mensagem_fechamento": "OS finalizada em lote pela Intervip",
