@@ -5,3 +5,4 @@
 /public/__pycache__
 .env
 *.log
+backup_etapa2_local.patch
