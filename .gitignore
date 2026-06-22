@@ -1,8 +1,9 @@
-/__pycache__
+**/__pycache__/
+*.pyc
 /src
 /route
 /public/__pycache__
 .env
 *.log
-/tests
+backup_etapa2_local.patch
 /.pytest_cache

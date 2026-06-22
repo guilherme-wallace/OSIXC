@@ -1,83 +1,192 @@
-import base64
-import json
-import os
-import logging
-from route.dadosDeconexao import hostIXC, tokenIXC
-from public.travas_seguranca import bloquear_acao_destrutiva
+from collections import Counter
+from datetime import datetime
 
-def finalizar_OS():
-    bloquear_acao_destrutiva("finalizar_OS")
+from public.ixc_client import IXCAPIError, fechar_os, obter_os_por_id
+from public.relatorio_os import gerar_relatorios_fechamento, validar_filtros_os
+from public.travas_seguranca import autorizar_fechamento
 
-    import requests
 
-    caminho = ''
-    logging.basicConfig(filename=f'{caminho}src/finalizar_OS.log',
-                       level=logging.INFO,
-                       format='%(asctime)s - %(levelname)s - %(message)s')
-    
-    try:
-        arquivo_entrada = f'{caminho}src/pegaOSResultado.json'
-        
-        if not os.path.exists(arquivo_entrada):
-            logging.error(f"Arquivo {arquivo_entrada} não encontrado")
-            print(f"Arquivo {arquivo_entrada} não encontrado")
-            return
+def finalizar_OS(
+    configuracao,
+    resultado_busca,
+    input_fn=input,
+    obter_os_fn=None,
+    fechar_os_fn=None,
+):
+    obter_os_fn = obter_os_fn or obter_os_por_id
+    fechar_os_fn = fechar_os_fn or fechar_os
 
-        with open(arquivo_entrada, 'r', encoding='utf-8') as f:
-            dados_os = json.load(f)
+    registros = resultado_busca.get("registros", [])
+    candidatos = []
+    erros = []
+    ids_vistos = set()
 
-        url = f"https://{hostIXC}/webservice/v1/su_oss_chamado_fechar"
-        token = tokenIXC
-        
-        headers = {
-            'Authorization': 'Basic {}'.format(base64.b64encode(token).decode('utf-8')),
-            'Content-Type': 'application/json'
-        }
+    for registro in registros:
+        problemas = validar_filtros_os(registro, configuracao)
+        id_os = str(registro.get("id", "")).strip()
+        if id_os and id_os in ids_vistos:
+            problemas.append("id_duplicado_no_lote")
+        ids_vistos.add(id_os)
 
-        if 'registros' not in dados_os or not dados_os['registros']:
-            logging.info("Nenhum registro encontrado para finalização")
-            print("Nenhum registro encontrado para finalização")
-            return
+        if problemas:
+            erros.append(
+                _registro_erro(
+                    resultado_busca,
+                    id_os,
+                    etapa="validacao_inicial",
+                    categoria="filtros_iniciais",
+                    mensagem="; ".join(problemas),
+                )
+            )
+        else:
+            candidatos.append(registro)
 
-        for registro in dados_os['registros']:
-            id_os = registro.get('id', '')
-            if not id_os:
-                logging.warning("Registro sem ID encontrado, pulando...")
-                continue
+    if not candidatos:
+        gerar_relatorios_fechamento([], erros, configuracao)
+        return _resumo([], erros, interrompido=False)
 
-            payload = {
-                "id_chamado": str(id_os),
-                "data_inicio": "29/10/2025",
-                "data_final": "30/10/2025",
-                "mensagem": "Cobrança sendo realizada pela empresa 2SAFE",
-                "id_tecnico": "96",
-                "finaliza_processo_aux": "S",
-                "status": "F"
-            }
+    autorizacao = autorizar_fechamento(
+        configuracao,
+        resultado_busca,
+        [registro["id"] for registro in candidatos],
+        input_fn=input_fn,
+    )
 
-            try:
-                response = requests.post(url, 
-                                       data=json.dumps(payload), 
-                                       headers=headers)
-                
-                if response.status_code == 200:
-                    logging.info(f"OS {id_os} finalizada com sucesso")
-                    print(f"OS {id_os} finalizada com sucesso")
-                else:
-                    logging.error(f"Erro ao finalizar OS {id_os}: Status {response.status_code}")
-                    print(f"Erro ao finalizar OS {id_os}: Status {response.status_code}")
-                    print(f"Resposta: {response.text}")
-                    
-            except requests.exceptions.RequestException as e:
-                logging.error(f"Erro na requisição para OS {id_os}: {str(e)}")
-                print(f"Erro na requisição para OS {id_os}: {str(e)}")
+    sucessos = []
+    contagem_erros = Counter()
+    categorias_ignoradas = set()
+    interrompido = False
+    configuracao_execucao = dict(configuracao)
+    configuracao_execucao["data_execucao"] = datetime.now().strftime("%d/%m/%Y")
 
-    except Exception as e:
-        logging.error(f"Erro geral no script: {str(e)}")
-        print(f"Erro geral no script: {str(e)}")
+    for registro in candidatos:
+        id_os = str(registro["id"])
 
-    logging.info("Processo de finalização concluído")
-    print("Processo de finalização concluído")
+        try:
+            os_atual = obter_os_fn(id_os, configuracao["timeout_api_segundos"])
+            problemas = validar_filtros_os(os_atual, configuracao)
+            if problemas:
+                raise IXCAPIError(
+                    f"OS {id_os} nao atende mais aos filtros: {'; '.join(problemas)}",
+                    categoria="revalidacao_filtros",
+                )
 
-if __name__ == "__main__":
-    finalizar_OS()
+            resposta = fechar_os_fn(id_os, configuracao_execucao, autorizacao)
+            sucessos.append(
+                {
+                    "id_execucao": resultado_busca["id_execucao"],
+                    "id": id_os,
+                    "data_hora": datetime.now().isoformat(timespec="seconds"),
+                    "setor_revalidado": os_atual.get("setor", ""),
+                    "status_anterior": os_atual.get("status", ""),
+                    "data_abertura": os_atual.get("data_abertura", ""),
+                    "id_tecnico_responsavel": configuracao["tecnico_responsavel"],
+                    "mensagem_fechamento": configuracao["mensagem_fechamento"],
+                    "resposta_ixc": resposta.get("resposta", ""),
+                }
+            )
+
+        except IXCAPIError as erro:
+            contagem_erros[erro.assinatura] += 1
+            repeticoes = contagem_erros[erro.assinatura]
+            erros.append(
+                _registro_erro(
+                    resultado_busca,
+                    id_os,
+                    etapa="revalidacao_ou_fechamento",
+                    categoria=erro.categoria,
+                    codigo_http=erro.codigo_http,
+                    critico=erro.critico,
+                    tentativa_repetida=repeticoes,
+                    mensagem=str(erro),
+                )
+            )
+
+            deve_perguntar = (
+                erro.critico
+                or repeticoes >= int(configuracao["limite_erros_repetidos"])
+            )
+            if deve_perguntar and erro.assinatura not in categorias_ignoradas:
+                decisao = _perguntar_apos_erro(erro, repeticoes, input_fn)
+                if decisao == "ignorar":
+                    categorias_ignoradas.add(erro.assinatura)
+                elif decisao == "parar":
+                    interrompido = True
+                    break
+
+        except Exception as erro:
+            categoria = f"inesperado:{type(erro).__name__}"
+            contagem_erros[categoria] += 1
+            repeticoes = contagem_erros[categoria]
+            erros.append(
+                _registro_erro(
+                    resultado_busca,
+                    id_os,
+                    etapa="erro_inesperado",
+                    categoria=categoria,
+                    critico=True,
+                    tentativa_repetida=repeticoes,
+                    mensagem=str(erro),
+                )
+            )
+            if categoria not in categorias_ignoradas:
+                decisao = _perguntar_apos_erro(erro, repeticoes, input_fn)
+                if decisao == "ignorar":
+                    categorias_ignoradas.add(categoria)
+                elif decisao == "parar":
+                    interrompido = True
+                    break
+
+    gerar_relatorios_fechamento(sucessos, erros, configuracao)
+    return _resumo(sucessos, erros, interrompido)
+
+
+def _perguntar_apos_erro(erro, repeticoes, input_fn):
+    print("")
+    print(f"Erro critico ou repetido {repeticoes} vez(es): {erro}")
+    print("[C] Continuar  [I] Ignorar este tipo de erro  [P] Parar")
+
+    while True:
+        try:
+            resposta = input_fn("> ").strip().lower()
+        except EOFError:
+            return "parar"
+
+        if resposta in ("c", "continuar"):
+            return "continuar"
+        if resposta in ("i", "ignorar"):
+            return "ignorar"
+        if resposta in ("p", "parar"):
+            return "parar"
+        print("Opcao invalida. Digite C, I ou P.")
+
+
+def _registro_erro(
+    resultado_busca,
+    id_os,
+    etapa,
+    categoria,
+    mensagem,
+    codigo_http="",
+    critico=False,
+    tentativa_repetida=1,
+):
+    return {
+        "id_execucao": resultado_busca["id_execucao"],
+        "id": str(id_os),
+        "data_hora": datetime.now().isoformat(timespec="seconds"),
+        "etapa": etapa,
+        "categoria": categoria,
+        "codigo_http": codigo_http or "",
+        "critico": "S" if critico else "N",
+        "tentativa_repetida": tentativa_repetida,
+        "mensagem": mensagem,
+    }
+
+
+def _resumo(sucessos, erros, interrompido):
+    return {
+        "total_sucessos": len(sucessos),
+        "total_erros": len(erros),
+        "interrompido": interrompido,
+    }
