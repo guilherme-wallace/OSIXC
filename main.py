@@ -4,6 +4,7 @@ import logging
 import os
 
 from public.configuracao_busca import carregar_configuracao
+from public.finalizar_OS import finalizar_OS
 from public.obter_Dados_OS import obter_dados_OS
 
 
@@ -19,20 +20,33 @@ logging.basicConfig(
 
 def main():
     try:
-        logging.info("Inicio da execucao do script em modo dry-run.")
+        logging.info("Inicio da execucao do script.")
         configuracao = carregar_configuracao()
-
-        if configuracao["dry_run"] is not True:
-            raise ValueError("dry_run deve permanecer true nesta etapa da refatoracao.")
 
         resultado = obter_dados_OS(configuracao["arquivo_json_busca"])
         logging.info(
-            "Busca concluida em dry-run. Total=%s, inconsistencias=%s, csv=%s",
+            "Busca concluida. Total=%s, inconsistencias=%s, csv=%s",
             resultado["total_encontrado"],
             resultado["total_inconsistencias"],
             resultado["relatorio_csv"],
         )
-        logging.info("Script finalizado sem executar acoes destrutivas.")
+
+        if configuracao["dry_run"]:
+            logging.info("Dry-run ativo. Nenhuma OS foi fechada.")
+            print("Dry-run ativo. Revise o CSV antes de habilitar o fechamento real.")
+        else:
+            resumo = finalizar_OS(configuracao, resultado)
+            logging.info(
+                "Fechamento concluido. Sucessos=%s, erros=%s, interrompido=%s",
+                resumo["total_sucessos"],
+                resumo["total_erros"],
+                resumo["interrompido"],
+            )
+            print(
+                "Fechamento concluido: "
+                f"{resumo['total_sucessos']} sucesso(s), "
+                f"{resumo['total_erros']} erro(s)."
+            )
 
     except Exception as erro:
         logging.error("Erro durante a execucao do script: %s", erro)

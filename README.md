@@ -1,51 +1,108 @@
 # OSIXC
 
-Projeto para apoiar a revisao e o fechamento em massa de OSs do IXC.
+Projeto para buscar, revisar e fechar OSs do IXC em lote com travas de seguranca.
 
-## Etapa atual: dry-run e relatorio
+## Fluxo atual
 
-Nesta versao, o script apenas:
+Toda execucao comeca por uma busca nova no IXC:
 
-- busca OSs no IXC usando filtros configuraveis;
-- salva o retorno bruto em JSON;
-- valida a qualidade dos dados encontrados;
-- gera um relatorio CSV para revisao;
-- bloqueia qualquer acao destrutiva de fechamento, alteracao de setor ou registro de mensagem.
+1. Carrega `config/busca_os_config.json`.
+2. Busca as OSs com os filtros configurados.
+3. Gera um JSON com identificador unico da execucao.
+4. Gera o CSV para revisao.
+5. Se `dry_run=true`, encerra sem fechar nenhuma OS.
+6. Se `dry_run=false`, valida todas as travas antes de iniciar o fechamento.
+7. Reconsulta cada OS no IXC imediatamente antes de fecha-la.
+8. Gera CSV separado de sucessos e erros.
 
-Nenhuma OS e fechada nesta etapa.
+O script nunca usa um JSON antigo para iniciar fechamento. A execucao real usa somente
+o resultado criado pela busca feita no mesmo processo.
 
-## Configuracao
+## Filtros
 
-Edite `config/busca_os_config.json` para ajustar:
+Os filtros padrao estao em `config/busca_os_config.json`:
 
-- `setores_permitidos`: setores que podem entrar na busca;
-- `status_finalizado`: status bloqueado/finalizado;
-- `data_abertura_limite`: data maxima de abertura para a busca;
-- `tecnico_responsavel`: tecnico que sera usado em etapa futura;
-- `limite_por_lote`: quantidade maxima de OSs por execucao;
-- `dry_run`: deve permanecer `true` nesta etapa;
-- `arquivo_json_busca`: caminho do JSON de retorno;
-- `relatorio_csv`: caminho do CSV de revisao;
-- `validade_json_minutos`: tempo maximo para considerar o JSON recente.
+- setores permitidos: `9` MANUTENCAO e `5` INSTALACAO;
+- status diferente de `F`;
+- data de abertura menor que `2026-05-01 00:00:00`;
+- tecnico responsavel: `96`;
+- limite por lote configuravel;
+- `dry_run=true` por padrao.
 
-## Como executar em dry-run
+## Arquivos gerados
 
-```bash
+- `src/pegaOSResultado.json`: retorno da busca e identificador da execucao;
+- `src/relatorio_os_encontradas.csv`: OSs encontradas e inconsistencias;
+- `src/relatorio_fechamentos_sucesso.csv`: fechamentos confirmados pelo endpoint;
+- `src/relatorio_fechamentos_erro.csv`: falhas, mudancas de filtro e OSs ignoradas.
+
+## Teste em dry-run
+
+Mantenha:
+
+```json
+"dry_run": true
+```
+
+Execute:
+
+```powershell
 python main.py
 ```
 
-Depois da execucao, revise o arquivo configurado em `relatorio_csv`.
+O script faz a busca e gera o CSV, mas nao acessa o endpoint de fechamento.
 
-## Como validar o CSV
+Revise se:
 
-Confira se todas as linhas respeitam:
+- todas as OSs pertencem aos setores `9` ou `5`;
+- nenhuma OS tem status `F`;
+- todas foram abertas antes da data limite;
+- a quantidade esta dentro de `limite_por_lote`;
+- a coluna `inconsistencias` foi avaliada.
 
-- setor `9` ou `5`;
-- status diferente de `F`;
-- data de abertura menor que `2026-05-01 00:00:00`;
-- campos importantes preenchidos, como `id`, `id_cliente`, `id_assunto` e `protocolo`;
-- coluna `inconsistencias` vazia para os registros prontos para etapa futura.
+## Execucao real segura
 
-## Proxima etapa sugerida
+Antes da execucao:
 
-Somente depois de validar o CSV, implementar fechamento seguro com confirmacao, revalidacao antes da alteracao, relatorio de sucesso/falha e tratamento de erros repetidos.
+1. Confirme os filtros e o limite no arquivo de configuracao.
+2. Altere conscientemente `dry_run` para `false`.
+3. Execute `python main.py`.
+4. Aguarde a nova busca e confira o total mostrado.
+5. Digite exatamente a frase solicitada, por exemplo `FECHAR 25 OSS`.
+
+Sem a frase exata, nenhuma OS e fechada.
+
+Para cada OS, o script reconsulta o IXC e valida novamente setor, status e data de
+abertura. Se a OS mudou desde a busca, ela vai para o CSV de erros e nao e fechada.
+
+O payload usa o tecnico configurado, status `F`, a mensagem configurada e a data da
+execucao como `data_inicio` e `data_final`.
+
+Depois da execucao, retorne `dry_run` para `true` e revise os dois CSVs de resultado.
+
+## Tratamento de erros
+
+- Erro comum: registra no CSV e continua.
+- Erro critico, como autenticacao: pergunta se deve continuar, ignorar o tipo ou parar.
+- Erro repetido: ao atingir `limite_erros_repetidos`, faz a mesma pergunta.
+- Entrada encerrada ou invalida durante situacao critica: a opcao segura e parar.
+
+## Testes automatizados
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+Os testes usam mocks e arquivos temporarios. Eles nao fazem chamadas reais ao IXC.
+
+## Configuracoes principais
+
+- `limite_por_lote`: quantidade maxima recebida pela execucao;
+- `validade_json_minutos`: validade maxima dos artefatos;
+- `limite_erros_repetidos`: quantidade antes da pergunta interativa;
+- `mensagem_fechamento`: mensagem enviada ao IXC;
+- `timeout_api_segundos`: timeout das chamadas;
+- `relatorio_sucessos_csv` e `relatorio_erros_csv`: caminhos dos resultados.
+
+As rotinas antigas de fechamento por mensagem, mudanca de setor e registro de mensagem
+continuam bloqueadas. O unico caminho autorizado e o fluxo seguro de `main.py`.

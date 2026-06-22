@@ -1,20 +1,20 @@
-import base64
 import json
 import os
-import urllib.request
+from datetime import datetime
+from uuid import uuid4
 
 from public.configuracao_busca import carregar_configuracao, validar_json_recente
+from public.ixc_client import listar_os
 from public.relatorio_os import gerar_relatorio_csv, validar_registros
-from route.dadosDeconexao import hostIntranet, tokenIXC, urlIXC
 
 
 def obter_dados_OS(arquivo_saida_pega_OS_json=None, caminho_config=None):
     configuracao = carregar_configuracao(caminho_config) if caminho_config else carregar_configuracao()
     arquivo_saida_pega_OS_json = arquivo_saida_pega_OS_json or configuracao["arquivo_json_busca"]
 
-    host = hostIntranet
-    url = urlIXC.format(host)
     setores = ",".join(str(setor) for setor in configuracao["setores_permitidos"])
+    id_execucao = uuid4().hex
+    gerado_em = datetime.now()
 
     payload = {
         "qtype": "su_oss_chamado.id",
@@ -45,24 +45,16 @@ def obter_dados_OS(arquivo_saida_pega_OS_json=None, caminho_config=None):
         "sortorder": "asc",
     }
 
-    headers = {
-        "ixcsoft": "listar",
-        "Authorization": "Basic {}".format(_codificar_token(tokenIXC)),
-        "Content-Type": "application/json",
-    }
-
-    texto_resposta = _consultar_ixc(url, payload, headers)
-
-    try:
-        json_data = json.loads(texto_resposta)
-    except ValueError as erro:
-        print(f"Erro ao processar a resposta como JSON: {erro}")
-        print(f"Resposta bruta: {texto_resposta}")
-        raise
+    json_data = listar_os(payload, configuracao["timeout_api_segundos"])
 
     registros = json_data.get("registros", [])
     registros_validados, inconsistencias = validar_registros(registros, configuracao)
     json_data["registros"] = registros_validados
+    json_data["_meta_execucao"] = {
+        "id_execucao": id_execucao,
+        "gerado_em": gerado_em.isoformat(timespec="seconds"),
+        "dry_run": configuracao["dry_run"],
+    }
 
     pasta_saida = os.path.dirname(arquivo_saida_pega_OS_json)
     if pasta_saida:
@@ -76,7 +68,7 @@ def obter_dados_OS(arquivo_saida_pega_OS_json=None, caminho_config=None):
 
     print(f"Os dados foram salvos no arquivo JSON '{arquivo_saida_pega_OS_json}'.")
     print(f"Relatorio CSV gerado em '{configuracao['relatorio_csv']}'.")
-    print("Dry-run obrigatorio ativo. Nenhuma OS foi alterada.")
+    print("Etapa de busca concluida. Nenhuma OS foi alterada durante a busca.")
     print(f"Total de OSs encontradas: {len(registros_validados)}.")
     print(f"Registros com inconsistencias: {len(inconsistencias)}.")
 
@@ -86,17 +78,7 @@ def obter_dados_OS(arquivo_saida_pega_OS_json=None, caminho_config=None):
         "arquivo_json": arquivo_saida_pega_OS_json,
         "relatorio_csv": configuracao["relatorio_csv"],
         "dry_run": configuracao["dry_run"],
+        "id_execucao": id_execucao,
+        "gerado_em": gerado_em,
+        "registros": registros_validados,
     }
-
-
-def _codificar_token(token):
-    if isinstance(token, str):
-        token = token.encode("utf-8")
-    return base64.b64encode(token).decode("utf-8")
-
-
-def _consultar_ixc(url, payload, headers):
-    dados = json.dumps(payload).encode("utf-8")
-    requisicao = urllib.request.Request(url, data=dados, headers=headers, method="GET")
-    with urllib.request.urlopen(requisicao, timeout=30) as resposta:
-        return resposta.read().decode("utf-8")
