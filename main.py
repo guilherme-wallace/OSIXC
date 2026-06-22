@@ -6,6 +6,7 @@ import os
 from public.configuracao_busca import carregar_configuracao
 from public.finalizar_OS import finalizar_OS
 from public.obter_Dados_OS import obter_dados_OS
+from public.simular_fechamento import simular_fechamento
 
 
 caminho = ""
@@ -31,7 +32,21 @@ def main():
             resultado["relatorio_csv"],
         )
 
-        if configuracao["dry_run"]:
+        if configuracao.get("simulacao_fechamento", False):
+            resumo = simular_fechamento(configuracao, resultado)
+            logging.info("Simulacao concluida: %s", resumo)
+            print("")
+            print("Resumo da simulacao:")
+            print(f"OSs encontradas: {resumo['total_encontrado']}")
+            print(f"OSs dentro do lote: {resumo['total_dentro_lote']}")
+            print(f"OSs que seriam fechadas: {resumo['total_seriam_fechadas']}")
+            print(f"Erros de revalidacao: {resumo['total_erros_revalidacao']}")
+            print(f"OSs ignoradas: {resumo['total_ignorado']}")
+            print(
+                "Tempo aproximado: "
+                f"{resumo['tempo_aproximado_segundos']:.2f} segundo(s)"
+            )
+        elif configuracao["dry_run"]:
             logging.info("Dry-run ativo. Nenhuma OS foi fechada.")
             print("Dry-run ativo. Revise o CSV antes de habilitar o fechamento real.")
         else:

@@ -17,10 +17,7 @@ class _AutorizacaoFechamento:
         self.ids_pendentes = set(ids_autorizados)
 
 
-def validar_pre_condicoes_fechamento(configuracao, resultado_busca):
-    if configuracao["dry_run"] is not False:
-        raise RuntimeError("Fechamento real exige dry_run=false.")
-
+def validar_artefatos_e_lote(configuracao, resultado_busca):
     registros = resultado_busca.get("registros", [])
     limite = int(configuracao["limite_por_lote"])
     if len(registros) > limite:
@@ -52,7 +49,10 @@ def validar_pre_condicoes_fechamento(configuracao, resultado_busca):
 
 
 def autorizar_fechamento(configuracao, resultado_busca, ids_autorizados, input_fn=input):
-    validar_pre_condicoes_fechamento(configuracao, resultado_busca)
+    if configuracao["dry_run"] is not False:
+        raise RuntimeError("Fechamento real exige dry_run=false.")
+
+    validar_artefatos_e_lote(configuracao, resultado_busca)
 
     ids_normalizados = [str(id_os) for id_os in ids_autorizados]
     frase = frase_confirmacao(len(ids_normalizados))
@@ -67,6 +67,21 @@ def autorizar_fechamento(configuracao, resultado_busca, ids_autorizados, input_f
         resultado_busca["id_execucao"],
         ids_normalizados,
     )
+
+
+def confirmar_simulacao(configuracao, resultado_busca, quantidade, input_fn=input):
+    if configuracao["dry_run"] is not True:
+        raise RuntimeError("A simulacao exige dry_run=true.")
+    if configuracao["simulacao_fechamento"] is not True:
+        raise RuntimeError("Modo simulacao_fechamento nao esta ativo.")
+
+    validar_artefatos_e_lote(configuracao, resultado_busca)
+    frase = f"SIMULAR {quantidade} OSS"
+    print("")
+    print("SIMULACAO: nenhum POST de fechamento sera enviado ao IXC.")
+    print(f"Para confirmar, digite exatamente: {frase}")
+    if input_fn("> ").strip() != frase:
+        raise RuntimeError("Confirmacao de simulacao invalida.")
 
 
 def validar_e_consumir_autorizacao(autorizacao, id_os):

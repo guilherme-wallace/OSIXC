@@ -2,6 +2,16 @@
 
 Projeto para buscar, revisar e fechar OSs do IXC em lote com travas de seguranca.
 
+## Modos de execucao
+
+| Modo | `dry_run` | `simulacao_fechamento` | Comportamento |
+| --- | --- | --- | --- |
+| Dry-run | `true` | `false` | Busca e gera o CSV inicial. Nao revalida cada OS e nao fecha. |
+| Simulacao | `true` | `true` | Executa travas, confirmacao e revalidacao completa, sem POST de fechamento. |
+| Fechamento real | `false` | `false` | Revalida e fecha somente com capability valida. |
+
+`dry_run=true` e `simulacao_fechamento=false` continuam sendo os valores padrao.
+
 ## Fluxo atual
 
 Toda execucao comeca por uma busca nova no IXC:
@@ -10,100 +20,97 @@ Toda execucao comeca por uma busca nova no IXC:
 2. Busca as OSs com os filtros configurados.
 3. Gera um JSON com identificador unico da execucao.
 4. Gera o CSV para revisao.
-5. Se `dry_run=true`, encerra sem fechar nenhuma OS.
-6. Se `dry_run=false`, valida todas as travas antes de iniciar o fechamento.
-7. Reconsulta cada OS no IXC imediatamente antes de fecha-la.
-8. Gera CSV separado de sucessos e erros.
+5. Escolhe dry-run, simulacao ou fechamento real.
+6. Simulacao e fechamento real validam artefatos, limite e confirmacao.
+7. Reconsulta cada OS imediatamente antes de simular ou fechar.
+8. Gera CSVs separados para o modo executado.
 
-O script nunca usa um JSON antigo para iniciar fechamento. A execucao real usa somente
-o resultado criado pela busca feita no mesmo processo.
+O script nunca usa um JSON antigo para iniciar simulacao ou fechamento.
 
 ## Filtros
-
-Os filtros padrao estao em `config/busca_os_config.json`:
 
 - setores permitidos: `9` MANUTENCAO e `5` INSTALACAO;
 - status diferente de `F`;
 - data de abertura menor que `2026-05-01 00:00:00`;
 - tecnico responsavel: `96`;
-- limite por lote configuravel;
-- `dry_run=true` por padrao.
+- limite por lote configuravel.
 
 ## Arquivos gerados
 
-- `src/pegaOSResultado.json`: retorno da busca e identificador da execucao;
-- `src/relatorio_os_encontradas.csv`: OSs encontradas e inconsistencias;
-- `src/relatorio_fechamentos_sucesso.csv`: fechamentos confirmados pelo endpoint;
-- `src/relatorio_fechamentos_erro.csv`: falhas, mudancas de filtro e OSs ignoradas.
+- `src/pegaOSResultado.json`;
+- `src/relatorio_os_encontradas.csv`;
+- `src/relatorio_fechamentos_sucesso.csv`;
+- `src/relatorio_fechamentos_erro.csv`;
+- `src/relatorio_simulacao_sucessos.csv`;
+- `src/relatorio_simulacao_erros.csv`.
 
-## Teste em dry-run
+## Dry-run
 
-Mantenha:
+Configure:
 
 ```json
-"dry_run": true
+"dry_run": true,
+"simulacao_fechamento": false
 ```
 
-Execute:
+Execute `python main.py`. O script busca e gera o CSV inicial, sem revalidacao individual e sem fechamento.
 
-```powershell
-python main.py
+## Simulacao completa
+
+Configure:
+
+```json
+"dry_run": true,
+"simulacao_fechamento": true
 ```
 
-O script faz a busca e gera o CSV, mas nao acessa o endpoint de fechamento.
+Execute `python main.py` e confirme exatamente `SIMULAR N OSS`. A simulacao valida JSON/CSV recentes, limite por lote e reconsulta cada OS. Ela nao cria capability e nao chama `fechar_os()`.
 
-Revise se:
+Revise no resumo e nos CSVs:
 
-- todas as OSs pertencem aos setores `9` ou `5`;
-- nenhuma OS tem status `F`;
-- todas foram abertas antes da data limite;
-- a quantidade esta dentro de `limite_por_lote`;
-- a coluna `inconsistencias` foi avaliada.
+- total encontrado e dentro do lote;
+- total que seria fechado;
+- erros de revalidacao;
+- registros ignorados;
+- tempo aproximado.
 
-## Execucao real segura
+Recomenda-se executar e revisar a simulacao antes de qualquer fechamento real.
 
-Antes da execucao:
+## Fechamento real
 
-1. Confirme os filtros e o limite no arquivo de configuracao.
-2. Altere conscientemente `dry_run` para `false`.
-3. Execute `python main.py`.
-4. Aguarde a nova busca e confira o total mostrado.
-5. Digite exatamente a frase solicitada, por exemplo `FECHAR 25 OSS`.
+Configure conscientemente:
 
-Sem a frase exata, nenhuma OS e fechada.
+```json
+"dry_run": false,
+"simulacao_fechamento": false
+```
 
-Para cada OS, o script reconsulta o IXC e valida novamente setor, status e data de
-abertura. Se a OS mudou desde a busca, ela vai para o CSV de erros e nao e fechada.
+Execute `python main.py`, confira a busca nova e confirme exatamente `FECHAR N OSS`. Cada OS e reconsultada antes do POST e o fechamento exige capability valida.
 
-O payload usa o tecnico configurado, status `F`, a mensagem configurada e a data da
-execucao como `data_inicio` e `data_final`.
+Depois, retorne `dry_run` para `true` e revise os CSVs de sucesso e erro.
 
-Depois da execucao, retorne `dry_run` para `true` e revise os dois CSVs de resultado.
+## Tratamento de erros reais
 
-## Tratamento de erros
+- Erro comum: registra e continua.
+- Erro critico ou repetido: pergunta se deve continuar, ignorar o tipo ou parar.
+- Entrada invalida pede nova opcao; EOF para com seguranca.
 
-- Erro comum: registra no CSV e continua.
-- Erro critico, como autenticacao: pergunta se deve continuar, ignorar o tipo ou parar.
-- Erro repetido: ao atingir `limite_erros_repetidos`, faz a mesma pergunta.
-- Entrada invalida durante situacao critica pede uma nova opcao; encerramento da
-  entrada (EOF) usa a opcao segura de parar.
-
-## Testes automatizados
+## Testes
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-Os testes usam mocks e arquivos temporarios. Eles nao fazem chamadas reais ao IXC.
+Os testes usam mocks e arquivos temporarios. Nao fazem chamadas reais de fechamento.
 
 ## Configuracoes principais
 
-- `limite_por_lote`: quantidade maxima recebida pela execucao;
-- `validade_json_minutos`: validade maxima dos artefatos;
-- `limite_erros_repetidos`: quantidade antes da pergunta interativa;
-- `mensagem_fechamento`: mensagem enviada ao IXC;
-- `timeout_api_segundos`: timeout das chamadas;
-- `relatorio_sucessos_csv` e `relatorio_erros_csv`: caminhos dos resultados.
+- `limite_por_lote`;
+- `simulacao_fechamento`;
+- `validade_json_minutos`;
+- `limite_erros_repetidos`;
+- `mensagem_fechamento`;
+- `timeout_api_segundos`;
+- caminhos dos relatorios reais e simulados.
 
-As rotinas antigas de fechamento por mensagem, mudanca de setor e registro de mensagem
-continuam bloqueadas. O unico caminho autorizado e o fluxo seguro de `main.py`.
+As rotinas destrutivas antigas continuam bloqueadas. O unico caminho real autorizado e o fluxo seguro de `main.py`.
