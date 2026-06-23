@@ -21,5 +21,11 @@
     "max_rodadas_cascata": 5,
     "limite_por_rodada_cascata": 100,
     "intervalo_segundos_entre_rodadas": 5,
-    "diretorio_relatorios_cascata": "src/relatorios_cascata"
+    "diretorio_relatorios_cascata": "src/relatorios_cascata",
+    "modo_emergencial_por_mensagem": false,
+    "mensagem_busca_emergencial": "OS finalizada em lote via script de fechamento.",
+    "arquivo_json_emergencial": "src/emergencial_os_encontradas.json",
+    "relatorio_emergencial_csv": "src/relatorio_emergencial_revisao.csv",
+    "relatorio_emergencial_sucessos_csv": "src/relatorio_emergencial_sucessos.csv",
+    "relatorio_emergencial_erros_csv": "src/relatorio_emergencial_erros.csv"
 }

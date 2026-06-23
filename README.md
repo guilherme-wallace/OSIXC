@@ -181,3 +181,55 @@ Os testes usam mocks e arquivos temporarios. Nao fazem chamadas reais de fechame
 - caminhos dos relatorios reais e simulados.
 
 As rotinas destrutivas antigas continuam bloqueadas. O unico caminho real autorizado e o fluxo seguro de `main.py`.
+
+## Modo emergencial por mensagem
+
+Este modo e independente dos filtros normais de setor e data. Ele deve ser
+usado somente para localizar OSs abertas cuja mensagem contenha a frase
+configurada.
+
+Valores padrao:
+
+```json
+"modo_emergencial_por_mensagem": false,
+"mensagem_busca_emergencial": "OS finalizada em lote via script de fechamento.",
+"dry_run": true
+```
+
+Quando ativo, o `main.py` nao executa a busca normal. Ele:
+
+1. busca somente `status != F` e `mensagem LIKE mensagem_busca_emergencial`;
+2. gera JSON e CSV exclusivos para revisao;
+3. bloqueia IDs duplicados e registros inconsistentes;
+4. em dry-run, encerra sem POST;
+5. em modo real, valida artefatos e limite, exige `FECHAR N OSS`, reconsulta
+   cada OS e confirma novamente status e mensagem antes de fechar.
+
+Relatorios:
+
+- `src/relatorio_emergencial_revisao.csv`;
+- `src/relatorio_emergencial_sucessos.csv`;
+- `src/relatorio_emergencial_erros.csv`.
+
+### Revisao emergencial em dry-run
+
+```json
+"modo_emergencial_por_mensagem": true,
+"dry_run": true,
+"limite_por_lote": 100
+```
+
+Execute `python main.py` e revise o CSV de revisao. Nenhuma OS e alterada.
+
+### Execucao emergencial real limitada
+
+Depois de validar o CSV:
+
+```json
+"modo_emergencial_por_mensagem": true,
+"dry_run": false,
+"limite_por_lote": 1
+```
+
+Execute `python main.py` e digite exatamente `FECHAR N OSS`. Ao terminar,
+restaure `dry_run=true` e `modo_emergencial_por_mensagem=false`.

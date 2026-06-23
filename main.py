@@ -5,6 +5,7 @@ import os
 
 from public.configuracao_busca import carregar_configuracao
 from public.finalizar_OS import finalizar_OS
+from public.modo_emergencial import executar_modo_emergencial
 from public.obter_Dados_OS import obter_dados_OS
 from public.simular_fechamento import simular_fechamento
 
@@ -23,6 +24,17 @@ def main():
     try:
         logging.info("Inicio da execucao do script.")
         configuracao = carregar_configuracao()
+
+        if configuracao.get("modo_emergencial_por_mensagem", False):
+            resumo = executar_modo_emergencial(configuracao)
+            logging.info("Modo emergencial concluido: %s", resumo)
+            print("")
+            print("Resumo do modo emergencial:")
+            print(f"OSs encontradas: {resumo['total_encontrado']}")
+            print(f"OSs elegiveis: {resumo['total_elegiveis']}")
+            print(f"Sucessos: {resumo['total_sucessos']}")
+            print(f"Erros ou inconsistencias: {resumo['total_erros']}")
+            return
 
         resultado = obter_dados_OS(configuracao["arquivo_json_busca"])
         logging.info(

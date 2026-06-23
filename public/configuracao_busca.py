@@ -35,6 +35,27 @@ def carregar_configuracao(caminho_config=CONFIG_PADRAO):
         "diretorio_relatorios_cascata",
         "src/relatorios_cascata",
     )
+    configuracao.setdefault("modo_emergencial_por_mensagem", False)
+    configuracao.setdefault(
+        "mensagem_busca_emergencial",
+        "OS finalizada em lote via script de fechamento.",
+    )
+    configuracao.setdefault(
+        "arquivo_json_emergencial",
+        "src/emergencial_os_encontradas.json",
+    )
+    configuracao.setdefault(
+        "relatorio_emergencial_csv",
+        "src/relatorio_emergencial_revisao.csv",
+    )
+    configuracao.setdefault(
+        "relatorio_emergencial_sucessos_csv",
+        "src/relatorio_emergencial_sucessos.csv",
+    )
+    configuracao.setdefault(
+        "relatorio_emergencial_erros_csv",
+        "src/relatorio_emergencial_erros.csv",
+    )
 
     validar_configuracao(configuracao)
     return configuracao
@@ -65,6 +86,12 @@ def validar_configuracao(configuracao):
         "limite_por_rodada_cascata",
         "intervalo_segundos_entre_rodadas",
         "diretorio_relatorios_cascata",
+        "modo_emergencial_por_mensagem",
+        "mensagem_busca_emergencial",
+        "arquivo_json_emergencial",
+        "relatorio_emergencial_csv",
+        "relatorio_emergencial_sucessos_csv",
+        "relatorio_emergencial_erros_csv",
     ]
 
     faltando = [campo for campo in campos_obrigatorios if campo not in configuracao]
@@ -82,6 +109,9 @@ def validar_configuracao(configuracao):
 
     if not isinstance(configuracao["fechamento_cascata_ativo"], bool):
         raise ValueError("fechamento_cascata_ativo deve ser true ou false.")
+
+    if not isinstance(configuracao["modo_emergencial_por_mensagem"], bool):
+        raise ValueError("modo_emergencial_por_mensagem deve ser true ou false.")
 
     if not configuracao["setores_permitidos"]:
         raise ValueError("Informe ao menos um setor permitido.")
@@ -109,6 +139,9 @@ def validar_configuracao(configuracao):
 
     if not str(configuracao["frase_marcadora_fechamento"]).strip():
         raise ValueError("frase_marcadora_fechamento nao pode ficar vazia.")
+
+    if not str(configuracao["mensagem_busca_emergencial"]).strip():
+        raise ValueError("mensagem_busca_emergencial nao pode ficar vazia.")
 
     if (
         configuracao["fechamento_cascata_ativo"]
