@@ -55,6 +55,10 @@ def simular_fechamento(
         try:
             os_atual = obter_os_fn(id_os, configuracao["timeout_api_segundos"])
             problemas = validar_filtros_os(os_atual, configuracao)
+            if str(os_atual.get("id_ticket", "")).strip() != str(
+                registro.get("id_ticket", "")
+            ).strip():
+                problemas.append("id_ticket_alterado_na_revalidacao")
             if problemas:
                 raise IXCAPIError(
                     f"OS {id_os} nao atende mais aos filtros: {'; '.join(problemas)}",
@@ -65,6 +69,7 @@ def simular_fechamento(
                 {
                     "id_execucao": resultado_busca["id_execucao"],
                     "id": id_os,
+                    "id_ticket": str(os_atual.get("id_ticket", "")),
                     "data_hora": datetime.now().isoformat(timespec="seconds"),
                     "setor_revalidado": os_atual.get("setor", ""),
                     "status_atual": os_atual.get("status", ""),
@@ -92,6 +97,11 @@ def simular_fechamento(
     if configuracao.get("fechamento_cascata_ativo", False):
         cascata = executar_cascata_simulada(
             configuracao,
+            {
+                str(registro.get("id_ticket", "")).strip()
+                for registro in candidatos
+                if str(registro.get("id_ticket", "")).strip()
+            },
             input_fn=input_fn,
         )
 

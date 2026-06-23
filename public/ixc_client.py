@@ -60,7 +60,7 @@ def obter_os_por_id(id_os, timeout_segundos):
     return registro
 
 
-def listar_os_cascata(configuracao):
+def listar_os_abertas_por_ticket(id_ticket, configuracao):
     payload = {
         "qtype": "su_oss_chamado.id",
         "query": "0",
@@ -75,9 +75,9 @@ def listar_os_cascata(configuracao):
                     "P": str(configuracao["status_finalizado"]),
                 },
                 {
-                    "TB": "mensagem",
-                    "OP": "LIKE",
-                    "P": configuracao["frase_marcadora_fechamento"],
+                    "TB": "id_ticket",
+                    "OP": "=",
+                    "P": str(id_ticket),
                 },
             ]
         ),

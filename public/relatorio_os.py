@@ -4,13 +4,13 @@ from datetime import datetime
 
 
 CAMPOS_RELATORIO = [
-    "id", "status", "setor", "data_abertura", "id_cliente",
+    "id", "id_ticket", "status", "setor", "data_abertura", "id_cliente",
     "id_contrato_kit", "id_assunto", "id_tecnico", "protocolo",
     "mensagem", "inconsistencias",
 ]
 
 CAMPOS_FECHAMENTO_SUCESSO = [
-    "id_execucao", "id", "data_hora", "setor_revalidado",
+    "id_execucao", "id", "id_ticket", "data_hora", "setor_revalidado",
     "status_anterior", "data_abertura", "id_tecnico_responsavel",
     "mensagem_fechamento", "resposta_ixc",
 ]
@@ -21,7 +21,7 @@ CAMPOS_FECHAMENTO_ERRO = [
 ]
 
 CAMPOS_SIMULACAO_SUCESSO = [
-    "id_execucao", "id", "data_hora", "setor_revalidado",
+    "id_execucao", "id", "id_ticket", "data_hora", "setor_revalidado",
     "status_atual", "data_abertura", "resultado",
 ]
 
@@ -105,9 +105,12 @@ def validar_filtros_os(registro, configuracao):
     status = str(registro.get("status", "")).strip()
     setor = str(registro.get("setor", "")).strip()
     data_abertura_texto = str(registro.get("data_abertura", "")).strip()
+    id_ticket = str(registro.get("id_ticket", "")).strip()
 
     if not id_os:
         problemas.append("sem_id")
+    if configuracao.get("fechamento_cascata_ativo", False) and not id_ticket:
+        problemas.append("id_ticket_vazio")
     if status == status_finalizado:
         problemas.append("status_finalizado")
     if setor not in setores_permitidos:

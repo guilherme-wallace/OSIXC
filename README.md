@@ -92,8 +92,12 @@ Depois, retorne `dry_run` para `true` e revise os CSVs de sucesso e erro.
 
 ## Fechamento em cascata
 
-A cascata procura OSs abertas cuja mensagem contenha exatamente a frase marcadora.
-Ela e desativada por padrao e nunca cria uma autorizacao propria.
+A cascata coleta o campo `id_ticket` das OSs iniciais elegiveis e procura todas
+as OSs abertas desses mesmos atendimentos. O JSON real do IXC retorna o campo
+com o nome `id_ticket`, que tambem e usado no filtro da listagem.
+
+Ela e desativada por padrao e nunca cria uma autorizacao propria. A capability
+emitida depois da confirmacao guarda os atendimentos autorizados.
 
 Configuracoes:
 
@@ -105,11 +109,14 @@ Configuracoes:
 "intervalo_segundos_entre_rodadas": 5
 ```
 
-Cada rodada espera o intervalo configurado, busca OSs marcadas, revalida cada ID,
-status e mensagem, gera um CSV e mostra um resumo. IDs ja processados nao podem
-ser fechados novamente. O fluxo para quando nao ha novas OSs, quando atinge o
-maximo de rodadas, em erro critico, em erro de busca ou quando o operador
-escolhe parar apos erros repetidos.
+Cada rodada espera o intervalo configurado, busca por `id_ticket`, revalida ID
+da OS, status e atendimento, gera um CSV e mostra um resumo geral e por
+atendimento. IDs ja processados nao podem ser fechados novamente. O fluxo para
+quando nao ha novas OSs, quando atinge o maximo de rodadas, em erro critico, em
+erro de busca ou quando o operador escolhe parar apos erros repetidos.
+
+A frase marcadora continua em `mensagem_fechamento` e e enviada ao IXC, mas nao
+e usada como filtro principal da cascata.
 
 ### Simular a cascata
 
@@ -121,8 +128,9 @@ Configure:
 "fechamento_cascata_ativo": true
 ```
 
-Execute `python main.py` e confirme `SIMULAR N OSS`. A busca inicial e a cascata
-sao revalidadas, mas nenhum POST de fechamento e enviado. Revise todos os CSVs
+Execute `python main.py` e confirme `SIMULAR N OSS`. A busca inicial coleta os
+atendimentos e a cascata simula todas as OSs abertas encontradas por `id_ticket`,
+sem enviar POST de fechamento. Revise o resumo por atendimento e todos os CSVs
 em `src/relatorios_cascata/`.
 
 ### Executar a cascata real
@@ -139,9 +147,9 @@ Primeiro valide a simulacao. Para um primeiro teste real, use:
 ```
 
 Confirme exatamente `FECHAR N OSS`. A cascata real somente inicia depois do
-fechamento inicial autorizado e usa a mesma capability. Mantenha
-`mensagem_fechamento` contendo a frase marcadora. Ao terminar, restaure
-`dry_run=true` e `fechamento_cascata_ativo=false`.
+fechamento inicial autorizado e usa a mesma capability e os mesmos
+`id_ticket`. Mantenha `mensagem_fechamento` contendo a frase marcadora. Ao
+terminar, restaure `dry_run=true` e `fechamento_cascata_ativo=false`.
 
 ## Tratamento de erros reais
 

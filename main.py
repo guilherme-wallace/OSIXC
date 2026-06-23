@@ -86,6 +86,12 @@ def _mostrar_resumo_cascata(cascata):
     print(f"Erros: {cascata['total_erros']}")
     print(f"Ignoradas: {cascata['total_ignorado']}")
     print(f"Motivo da parada: {cascata['motivo_parada']}")
+    for id_ticket, resumo in cascata.get("por_ticket", {}).items():
+        print(
+            f"Atendimento {id_ticket}: "
+            f"{resumo['fechadas_ou_simuladas']} fechada(s)/simulada(s), "
+            f"{resumo['rodadas_com_atividade']} rodada(s) com atividade"
+        )
 
 
 if __name__ == "__main__":
