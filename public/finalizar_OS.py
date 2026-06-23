@@ -1,6 +1,7 @@
 from collections import Counter
 from datetime import datetime
 
+from public.fechamento_cascata import executar_cascata_real
 from public.ixc_client import IXCAPIError, fechar_os, obter_os_por_id
 from public.relatorio_os import gerar_relatorios_fechamento, validar_filtros_os
 from public.travas_seguranca import autorizar_fechamento
@@ -49,6 +50,11 @@ def finalizar_OS(
         configuracao,
         resultado_busca,
         [registro["id"] for registro in candidatos],
+        {
+            str(registro.get("id_ticket", "")).strip()
+            for registro in candidatos
+            if str(registro.get("id_ticket", "")).strip()
+        },
         input_fn=input_fn,
     )
 
@@ -65,6 +71,10 @@ def finalizar_OS(
         try:
             os_atual = obter_os_fn(id_os, configuracao["timeout_api_segundos"])
             problemas = validar_filtros_os(os_atual, configuracao)
+            if str(os_atual.get("id_ticket", "")).strip() != str(
+                registro.get("id_ticket", "")
+            ).strip():
+                problemas.append("id_ticket_alterado_na_revalidacao")
             if problemas:
                 raise IXCAPIError(
                     f"OS {id_os} nao atende mais aos filtros: {'; '.join(problemas)}",
@@ -76,6 +86,7 @@ def finalizar_OS(
                 {
                     "id_execucao": resultado_busca["id_execucao"],
                     "id": id_os,
+                    "id_ticket": str(os_atual.get("id_ticket", "")),
                     "data_hora": datetime.now().isoformat(timespec="seconds"),
                     "setor_revalidado": os_atual.get("setor", ""),
                     "status_anterior": os_atual.get("status", ""),
@@ -138,7 +149,14 @@ def finalizar_OS(
                     break
 
     gerar_relatorios_fechamento(sucessos, erros, configuracao)
-    return _resumo(sucessos, erros, interrompido)
+    cascata = None
+    if configuracao.get("fechamento_cascata_ativo", False) and not interrompido:
+        cascata = executar_cascata_real(
+            configuracao,
+            autorizacao,
+            input_fn=input_fn,
+        )
+    return _resumo(sucessos, erros, interrompido, cascata)
 
 
 def _perguntar_apos_erro(erro, repeticoes, input_fn):
@@ -184,9 +202,10 @@ def _registro_erro(
     }
 
 
-def _resumo(sucessos, erros, interrompido):
+def _resumo(sucessos, erros, interrompido, cascata=None):
     return {
         "total_sucessos": len(sucessos),
         "total_erros": len(erros),
         "interrompido": interrompido,
+        "cascata": cascata,
     }

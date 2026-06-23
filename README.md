@@ -42,7 +42,8 @@ O script nunca usa um JSON antigo para iniciar simulacao ou fechamento.
 - `src/relatorio_fechamentos_sucesso.csv`;
 - `src/relatorio_fechamentos_erro.csv`;
 - `src/relatorio_simulacao_sucessos.csv`;
-- `src/relatorio_simulacao_erros.csv`.
+- `src/relatorio_simulacao_erros.csv`;
+- `src/relatorios_cascata/cascata_<modo>_<execucao>_rodada_<NN>.csv`.
 
 ## Dry-run
 
@@ -89,6 +90,67 @@ Execute `python main.py`, confira a busca nova e confirme exatamente `FECHAR N O
 
 Depois, retorne `dry_run` para `true` e revise os CSVs de sucesso e erro.
 
+## Fechamento em cascata
+
+A cascata coleta o campo `id_ticket` das OSs iniciais elegiveis e procura todas
+as OSs abertas desses mesmos atendimentos. O JSON real do IXC retorna o campo
+com o nome `id_ticket`, que tambem e usado no filtro da listagem.
+
+Ela e desativada por padrao e nunca cria uma autorizacao propria. A capability
+emitida depois da confirmacao guarda os atendimentos autorizados.
+
+Configuracoes:
+
+```json
+"fechamento_cascata_ativo": false,
+"frase_marcadora_fechamento": "OS finalizada em lote via script de fechamento.",
+"max_rodadas_cascata": 5,
+"limite_por_rodada_cascata": 100,
+"intervalo_segundos_entre_rodadas": 5
+```
+
+Cada rodada espera o intervalo configurado, busca por `id_ticket`, revalida ID
+da OS, status e atendimento, gera um CSV e mostra um resumo geral e por
+atendimento. IDs ja processados nao podem ser fechados novamente. O fluxo para
+quando nao ha novas OSs, quando atinge o maximo de rodadas, em erro critico, em
+erro de busca ou quando o operador escolhe parar apos erros repetidos.
+
+A frase marcadora continua em `mensagem_fechamento` e e enviada ao IXC, mas nao
+e usada como filtro principal da cascata.
+
+### Simular a cascata
+
+Configure:
+
+```json
+"dry_run": true,
+"simulacao_fechamento": true,
+"fechamento_cascata_ativo": true
+```
+
+Execute `python main.py` e confirme `SIMULAR N OSS`. A busca inicial coleta os
+atendimentos e a cascata simula todas as OSs abertas encontradas por `id_ticket`,
+sem enviar POST de fechamento. Revise o resumo por atendimento e todos os CSVs
+em `src/relatorios_cascata/`.
+
+### Executar a cascata real
+
+Primeiro valide a simulacao. Para um primeiro teste real, use:
+
+```json
+"dry_run": false,
+"simulacao_fechamento": false,
+"fechamento_cascata_ativo": true,
+"limite_por_lote": 1,
+"max_rodadas_cascata": 1,
+"limite_por_rodada_cascata": 1
+```
+
+Confirme exatamente `FECHAR N OSS`. A cascata real somente inicia depois do
+fechamento inicial autorizado e usa a mesma capability e os mesmos
+`id_ticket`. Mantenha `mensagem_fechamento` contendo a frase marcadora. Ao
+terminar, restaure `dry_run=true` e `fechamento_cascata_ativo=false`.
+
 ## Tratamento de erros reais
 
 - Erro comum: registra e continua.
@@ -111,6 +173,11 @@ Os testes usam mocks e arquivos temporarios. Nao fazem chamadas reais de fechame
 - `limite_erros_repetidos`;
 - `mensagem_fechamento`;
 - `timeout_api_segundos`;
+- `fechamento_cascata_ativo`;
+- `frase_marcadora_fechamento`;
+- `max_rodadas_cascata`;
+- `limite_por_rodada_cascata`;
+- `intervalo_segundos_entre_rodadas`;
 - caminhos dos relatorios reais e simulados.
 
 As rotinas destrutivas antigas continuam bloqueadas. O unico caminho real autorizado e o fluxo seguro de `main.py`.

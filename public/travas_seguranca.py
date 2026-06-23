@@ -1,20 +1,40 @@
 import json
 import os
+import weakref
 from datetime import timedelta
 
 from public.configuracao_busca import validar_arquivo_recente
 
 
 _SEGREDO_CAPABILITY = object()
+_AUTORIZACOES_EMITIDAS = weakref.WeakSet()
 
 
 class _AutorizacaoFechamento:
-    __slots__ = ("_segredo", "id_execucao", "ids_pendentes")
+    __slots__ = (
+        "_segredo",
+        "id_execucao",
+        "ids_pendentes",
+        "ids_ticket_autorizados",
+        "cascata_permitida",
+        "__weakref__",
+    )
 
-    def __init__(self, id_execucao, ids_autorizados):
+    def __init__(
+        self,
+        segredo,
+        id_execucao,
+        ids_autorizados,
+        ids_ticket_autorizados,
+        cascata_permitida=False,
+    ):
+        if segredo is not _SEGREDO_CAPABILITY:
+            raise RuntimeError("Capability so pode ser emitida pelo fluxo confirmado.")
         self._segredo = _SEGREDO_CAPABILITY
         self.id_execucao = id_execucao
         self.ids_pendentes = set(ids_autorizados)
+        self.ids_ticket_autorizados = set(ids_ticket_autorizados)
+        self.cascata_permitida = cascata_permitida
 
 
 def validar_artefatos_e_lote(configuracao, resultado_busca):
@@ -48,7 +68,13 @@ def validar_artefatos_e_lote(configuracao, resultado_busca):
         raise RuntimeError("CSV de busca esta vazio ou invalido.")
 
 
-def autorizar_fechamento(configuracao, resultado_busca, ids_autorizados, input_fn=input):
+def autorizar_fechamento(
+    configuracao,
+    resultado_busca,
+    ids_autorizados,
+    ids_ticket_autorizados,
+    input_fn=input,
+):
     if configuracao["dry_run"] is not False:
         raise RuntimeError("Fechamento real exige dry_run=false.")
 
@@ -63,10 +89,15 @@ def autorizar_fechamento(configuracao, resultado_busca, ids_autorizados, input_f
     if resposta != frase:
         raise RuntimeError("Confirmacao invalida. Nenhuma OS foi fechada.")
 
-    return _AutorizacaoFechamento(
+    autorizacao = _AutorizacaoFechamento(
+        _SEGREDO_CAPABILITY,
         resultado_busca["id_execucao"],
         ids_normalizados,
+        {str(id_ticket) for id_ticket in ids_ticket_autorizados},
+        cascata_permitida=configuracao.get("fechamento_cascata_ativo", False),
     )
+    _AUTORIZACOES_EMITIDAS.add(autorizacao)
+    return autorizacao
 
 
 def confirmar_simulacao(configuracao, resultado_busca, quantidade, input_fn=input):
@@ -88,6 +119,7 @@ def validar_e_consumir_autorizacao(autorizacao, id_os):
     if (
         not isinstance(autorizacao, _AutorizacaoFechamento)
         or autorizacao._segredo is not _SEGREDO_CAPABILITY
+        or autorizacao not in _AUTORIZACOES_EMITIDAS
     ):
         raise RuntimeError("Capability de fechamento ausente ou invalida.")
 
@@ -98,6 +130,29 @@ def validar_e_consumir_autorizacao(autorizacao, id_os):
         )
 
     autorizacao.ids_pendentes.remove(id_normalizado)
+
+
+def obter_tickets_autorizados_cascata(autorizacao):
+    _validar_capability_cascata(autorizacao)
+    return frozenset(autorizacao.ids_ticket_autorizados)
+
+
+def autorizar_ids_cascata(autorizacao, id_ticket, ids_os):
+    _validar_capability_cascata(autorizacao)
+    id_ticket = str(id_ticket)
+    if id_ticket not in autorizacao.ids_ticket_autorizados:
+        raise RuntimeError(f"Atendimento {id_ticket} nao esta autorizado.")
+    autorizacao.ids_pendentes.update(str(id_os) for id_os in ids_os)
+
+
+def _validar_capability_cascata(autorizacao):
+    if (
+        not isinstance(autorizacao, _AutorizacaoFechamento)
+        or autorizacao._segredo is not _SEGREDO_CAPABILITY
+        or autorizacao not in _AUTORIZACOES_EMITIDAS
+        or not autorizacao.cascata_permitida
+    ):
+        raise RuntimeError("Capability nao autoriza fechamento em cascata.")
 
 
 def frase_confirmacao(quantidade):
