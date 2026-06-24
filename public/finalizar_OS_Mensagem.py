@@ -1,19 +1,12 @@
+import requests
 import base64
 import json
 import os
 import logging
 from route.dadosDeconexao import hostIXC, tokenIXC
-<<<<<<< Updated upstream
-from public.travas_seguranca import bloquear_acao_destrutiva
-=======
 from datetime import datetime
->>>>>>> Stashed changes
 
 def finalizar_OS_Mensagem():
-    bloquear_acao_destrutiva("finalizar_OS_Mensagem")
-
-    import requests
-
     caminho = ''
     logging.basicConfig(filename=f'{caminho}src/finalizar_OS.log',
                        level=logging.INFO,
@@ -98,4 +91,4 @@ def finalizar_OS_Mensagem():
     print("Processo de finalização concluído")
 
 if __name__ == "__main__":
-    finalizar_OS_Mensagem()
+    finalizar_OS()
