@@ -17,6 +17,7 @@ def obter_dados_OS(arquivo_saida_pega_OS_json=None, caminho_config=None):
     gerado_em = datetime.now()
 
     payload = {
+<<<<<<< Updated upstream
         "qtype": "su_oss_chamado.id",
         "query": "0",
         "oper": ">",
@@ -43,6 +44,22 @@ def obter_dados_OS(arquivo_saida_pega_OS_json=None, caminho_config=None):
         ),
         "sortname": "su_oss_chamado.id",
         "sortorder": "asc",
+=======
+        'qtype': 'su_oss_chamado.id',
+        'query': '0',
+        'oper': '>',
+        'page': '1',
+        'rp': '10000',
+        'grid_param': json.dumps([
+            {
+            "TB": "mensagem",
+            "OP": "L",
+            "P": "OS finalizada em lote via script de fechamento."
+        }
+        ]),
+        'sortname': 'su_oss_chamado.id',
+        'sortorder': 'asc'
+>>>>>>> Stashed changes
     }
 
     json_data = listar_os(payload, configuracao["timeout_api_segundos"])

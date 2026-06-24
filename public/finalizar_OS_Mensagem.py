@@ -3,7 +3,11 @@ import json
 import os
 import logging
 from route.dadosDeconexao import hostIXC, tokenIXC
+<<<<<<< Updated upstream
 from public.travas_seguranca import bloquear_acao_destrutiva
+=======
+from datetime import datetime
+>>>>>>> Stashed changes
 
 def finalizar_OS_Mensagem():
     bloquear_acao_destrutiva("finalizar_OS_Mensagem")
@@ -48,16 +52,18 @@ def finalizar_OS_Mensagem():
                 logging.warning("Registro sem ID encontrado, pulando...")
                 continue
                 
-            if not isinstance(mensagem, str) or "Finalização de OS" not in mensagem:
-                logging.info(f"OS {id_os} ignorada - mensagem não contém 'Finalização de OS'")
+            if not isinstance(mensagem, str) or "OS finalizada em lote via script de fechamento." not in mensagem:
+                logging.info(f"OS {id_os} ignorada - mensagem não contém a frase esperada")
                 continue
+            
+            data_atual = datetime.now().strftime("%d/%m/%Y")
 
             payload = {
                 "id_chamado": str(id_os),
-                "data_inicio": "20/03/2025",
-                "data_final": "01/04/2025",
-                "mensagem": "Finalização de OS",
-                "id_tecnico": "96",
+                "data_inicio": data_atual,
+                "data_final": data_atual,
+                "mensagem": "OS finalizada em lote via script de fechamento.",
+                "id_tecnico": "133",
                 "finaliza_processo_aux": "S",
                 "status": "F"
             }

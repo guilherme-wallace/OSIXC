@@ -1,4 +1,13 @@
+<<<<<<< Updated upstream
 from collections import Counter
+=======
+import requests
+import base64
+import json
+import os
+import logging
+from route.dadosDeconexao import hostIXC, tokenIXC
+>>>>>>> Stashed changes
 from datetime import datetime
 
 from public.ixc_client import IXCAPIError, fechar_os, obter_os_por_id
@@ -21,6 +30,7 @@ def finalizar_OS(
     erros = []
     ids_vistos = set()
 
+<<<<<<< Updated upstream
     for registro in registros:
         problemas = validar_filtros_os(registro, configuracao)
         id_os = str(registro.get("id", "")).strip()
@@ -40,6 +50,26 @@ def finalizar_OS(
             )
         else:
             candidatos.append(registro)
+=======
+        for registro in dados_os['registros']:
+            id_os = registro.get('id', '')
+            if not id_os:
+                logging.warning("Registro sem ID encontrado, pulando...")
+                continue
+            
+            data_atual = datetime.now().strftime("%d/%m/%Y")
+
+            payload = {
+                "id_chamado": str(id_os),
+                "data_inicio": data_atual,
+                "data_final": data_atual,
+                "proxima_sequencia_forcada": "21",
+                "mensagem": "OS finalizada em lote via script de fechamento.",
+                "id_tecnico": "133",
+                "finaliza_processo_aux": "S",
+                "status": "F"
+            }
+>>>>>>> Stashed changes
 
     if not candidatos:
         gerar_relatorios_fechamento([], erros, configuracao)
